@@ -141,6 +141,41 @@ function draw() {
     ctx.stroke();
   }
 
+  // Draw current progress marker
+  if (store.isSimulating || store.simProgress > 0) {
+    const progress = store.simProgress / 100;
+    const currentDist = maxDist * progress;
+    const markerX = toX(currentDist);
+
+    // Vertical line
+    ctx.beginPath();
+    ctx.moveTo(markerX, padding.top);
+    ctx.lineTo(markerX, padding.top + plotH);
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Drone marker
+    if (store.currentSimPosition) {
+      const markerY = toY(store.currentSimPosition.altitude);
+      ctx.beginPath();
+      ctx.arc(markerX, markerY, 8, 0, Math.PI * 2);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fill();
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Inner dot
+      ctx.beginPath();
+      ctx.arc(markerX, markerY, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#fef3c7';
+      ctx.fill();
+    }
+  }
+
   // Legend
   ctx.textAlign = 'left';
   ctx.fillStyle = '#3b82f6';
@@ -151,10 +186,19 @@ function draw() {
   ctx.fillRect(padding.left + 90, padding.top + 2, 12, 8);
   ctx.fillStyle = '#94a3b8';
   ctx.fillText('地形', padding.left + 106, padding.top + 10);
+  if (store.isSimulating || store.simProgress > 0) {
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(padding.left + 150, padding.top + 6, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('当前位置', padding.left + 162, padding.top + 10);
+  }
 }
 
 onMounted(() => nextTick(draw));
 watch(() => store.terrainProfile, draw, { deep: true });
+watch(() => store.simProgress, draw);
 </script>
 
 <template>

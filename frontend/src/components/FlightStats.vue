@@ -79,6 +79,73 @@ function handleExport() {
       </div>
     </div>
 
+    <!-- Current simulation stats -->
+    <div v-if="store.isSimulating || store.simProgress > 0" class="border-t border-slate-700 pt-2">
+      <h4 class="text-xs text-slate-400 mb-2">当前位置</h4>
+      <div v-if="store.currentSimPosition" class="bg-slate-900 rounded p-2 text-[10px] space-y-1">
+        <div class="flex justify-between">
+          <span class="text-slate-500">纬度</span>
+          <span class="text-slate-300 font-mono">{{ store.currentSimPosition.lat.toFixed(6) }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">经度</span>
+          <span class="text-slate-300 font-mono">{{ store.currentSimPosition.lng.toFixed(6) }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">高度</span>
+          <span class="text-sky-400 font-mono">{{ store.currentSimPosition.altitude.toFixed(1) }} m</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">速度</span>
+          <span class="text-emerald-400 font-mono">{{ store.currentSimPosition.speed.toFixed(1) }} m/s</span>
+        </div>
+      </div>
+
+      <h4 class="text-xs text-slate-400 mb-2 mt-3">实时统计</h4>
+      <div class="grid grid-cols-2 gap-2 text-[10px]">
+        <div class="bg-slate-900 rounded p-2">
+          <div class="text-slate-500">已飞行</div>
+          <div class="text-sm font-bold text-sky-400">
+            {{ (store.currentSimStats.traveledDistance / 1000).toFixed(2) }}
+            <span class="text-[9px] text-slate-500">km</span>
+          </div>
+        </div>
+        <div class="bg-slate-900 rounded p-2">
+          <div class="text-slate-500">剩余</div>
+          <div class="text-sm font-bold text-sky-400">
+            {{ (store.currentSimStats.remainingDistance / 1000).toFixed(2) }}
+            <span class="text-[9px] text-slate-500">km</span>
+          </div>
+        </div>
+        <div class="bg-slate-900 rounded p-2">
+          <div class="text-slate-500">已用时间</div>
+          <div class="text-sm font-bold text-emerald-400">
+            {{ formatTime(store.currentSimStats.elapsedTime) }}
+          </div>
+        </div>
+        <div class="bg-slate-900 rounded p-2">
+          <div class="text-slate-500">剩余时间</div>
+          <div class="text-sm font-bold text-emerald-400">
+            {{ formatTime(store.currentSimStats.remainingTime) }}
+          </div>
+        </div>
+        <div class="bg-slate-900 rounded p-2 col-span-2">
+          <div class="text-slate-500">已用电量</div>
+          <div class="flex items-center gap-2">
+            <div class="text-sm font-bold" :style="{ color: batteryColor(store.currentSimStats.batteryUsed) }">
+              {{ store.currentSimStats.batteryUsed.toFixed(1) }}%
+            </div>
+            <div class="flex-1 bg-slate-700 rounded-full h-1.5">
+              <div
+                class="h-1.5 rounded-full transition-all"
+                :style="{ width: store.currentSimStats.batteryUsed + '%', backgroundColor: batteryColor(store.currentSimStats.batteryUsed) }"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="border-t border-slate-700 pt-2">
       <h4 class="text-xs text-slate-400 mb-1">无人机配置</h4>
       <div class="grid grid-cols-3 gap-1 text-[10px] text-slate-500">

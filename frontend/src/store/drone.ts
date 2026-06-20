@@ -19,7 +19,9 @@ export const useDroneStore = defineStore('drone', () => {
   const currentPlan = ref<FlightPlan | null>(null);
   const selectedAlgorithm = ref<'astar' | 'rrt'>('astar');
   const isSimulating = ref(false);
+  const isPaused = ref(false);
   const simProgress = ref(0);
+  const simSpeed = ref<1 | 2 | 4 | 8>(1);
   const mapCenter = ref<[number, number]>([39.9, 116.4]);
 
   const droneConfig = ref<DroneConfig>({
@@ -68,6 +70,12 @@ export const useDroneStore = defineStore('drone', () => {
     waypoints.value = [];
     currentPlan.value = null;
     simProgress.value = 0;
+    isSimulating.value = false;
+    isPaused.value = false;
+    if (simInterval) {
+      clearInterval(simInterval);
+      simInterval = null;
+    }
   }
 
   function updatePlan() {
@@ -84,18 +92,71 @@ export const useDroneStore = defineStore('drone', () => {
 
   let simInterval: ReturnType<typeof setInterval> | null = null;
 
-  function simulateFlight() {
-    if (waypoints.value.length < 2 || isSimulating.value) return;
-    isSimulating.value = true;
-    simProgress.value = 0;
+  function startSimulation() {
+    const baseInterval = 50;
+    const speedMultiplier = simSpeed.value;
+    const increment = 1 * speedMultiplier;
     simInterval = setInterval(() => {
-      simProgress.value += 1;
+      simProgress.value = Math.min(100, simProgress.value + increment);
       if (simProgress.value >= 100) {
         simProgress.value = 100;
         isSimulating.value = false;
-        if (simInterval) clearInterval(simInterval);
+        isPaused.value = false;
+        if (simInterval) {
+          clearInterval(simInterval);
+          simInterval = null;
+        }
       }
-    }, 50);
+    }, baseInterval);
+  }
+
+  function simulateFlight() {
+    if (waypoints.value.length < 2) return;
+    if (isSimulating.value && isPaused.value) {
+      isPaused.value = false;
+      startSimulation();
+      return;
+    }
+    if (isSimulating.value) return;
+    isSimulating.value = true;
+    isPaused.value = false;
+    simProgress.value = 0;
+    startSimulation();
+  }
+
+  function togglePause() {
+    if (!isSimulating.value) return;
+    if (isPaused.value) {
+      isPaused.value = false;
+      startSimulation();
+    } else {
+      isPaused.value = true;
+      if (simInterval) {
+        clearInterval(simInterval);
+        simInterval = null;
+      }
+    }
+  }
+
+  function setSimSpeed(speed: 1 | 2 | 4 | 8) {
+    simSpeed.value = speed;
+    if (isSimulating.value && !isPaused.value && simInterval) {
+      clearInterval(simInterval);
+      simInterval = null;
+      startSimulation();
+    }
+  }
+
+  function setSimProgress(progress: number) {
+    simProgress.value = Math.max(0, Math.min(100, progress));
+    if (simProgress.value >= 100) {
+      isSimulating.value = false;
+      isPaused.value = false;
+      if (simInterval) {
+        clearInterval(simInterval);
+        simInterval = null;
+      }
+    }
   }
 
   function loadMockData() {
@@ -146,6 +207,51 @@ export const useDroneStore = defineStore('drone', () => {
     });
   });
 
+  const currentSimPosition = computed(() => {
+    if (waypoints.value.length < 2) return null;
+    const progress = simProgress.value / 100;
+    const totalWp = waypoints.value.length;
+    const segIdx = Math.min(Math.floor(progress * (totalWp - 1)), totalWp - 2);
+    const segProgress = (progress * (totalWp - 1)) - segIdx;
+    const wp1 = waypoints.value[segIdx];
+    const wp2 = waypoints.value[segIdx + 1];
+    const lat = wp1.lat + (wp2.lat - wp1.lat) * segProgress;
+    const lng = wp1.lng + (wp2.lng - wp1.lng) * segProgress;
+    const altitude = wp1.altitude + (wp2.altitude - wp1.altitude) * segProgress;
+    const speed = wp1.speed + (wp2.speed - wp1.speed) * segProgress;
+    return { lat, lng, altitude, speed, segIdx, segProgress };
+  });
+
+  const currentSimStats = computed(() => {
+    if (!currentPlan.value || waypoints.value.length < 2) {
+      return {
+        traveledDistance: 0,
+        elapsedTime: 0,
+        batteryUsed: 0,
+        remainingDistance: 0,
+        remainingTime: 0,
+        remainingBattery: 0,
+      };
+    }
+    const progress = simProgress.value / 100;
+    const totalDist = currentPlan.value.totalDistance;
+    const totalTime = currentPlan.value.estimatedTime;
+    const totalBattery = currentPlan.value.batteryUsage;
+
+    const traveledDistance = totalDist * progress;
+    const elapsedTime = totalTime * progress;
+    const batteryUsed = totalBattery * progress;
+
+    return {
+      traveledDistance,
+      elapsedTime,
+      batteryUsed,
+      remainingDistance: totalDist - traveledDistance,
+      remainingTime: totalTime - elapsedTime,
+      remainingBattery: totalBattery - batteryUsed,
+    };
+  });
+
   return {
     waypoints,
     noFlyZones,
@@ -154,18 +260,25 @@ export const useDroneStore = defineStore('drone', () => {
     droneConfig,
     selectedAlgorithm,
     isSimulating,
+    isPaused,
     simProgress,
+    simSpeed,
     mapCenter,
     totalDistance,
     estimatedTime,
     batteryPercent,
     terrainProfile,
+    currentSimPosition,
+    currentSimStats,
     addWaypoint,
     removeWaypoint,
     updateWaypoint,
     planRoute,
     clearRoute,
     simulateFlight,
+    togglePause,
+    setSimSpeed,
+    setSimProgress,
     loadMockData,
     exportPlan,
     updatePlan,

@@ -87,26 +87,58 @@ function handlePlanRoute() {
           >
             🧭 规划航线
           </button>
-          <button
-            @click="store.simulateFlight()"
-            :disabled="store.isSimulating || store.waypoints.length < 2"
-            class="w-full py-2 rounded text-xs font-medium bg-amber-700 text-white hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          >
-            {{ store.isSimulating ? '飞行中...' : '▶ 模拟飞行' }}
-          </button>
+          <div class="flex gap-2">
+            <button
+              @click="store.simulateFlight()"
+              :disabled="(store.isSimulating && !store.isPaused) || store.waypoints.length < 2"
+              class="flex-1 py-2 rounded text-xs font-medium bg-amber-700 text-white hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            >
+              {{ store.isSimulating && !store.isPaused ? '飞行中...' : '▶ 开始' }}
+            </button>
+            <button
+              v-if="store.isSimulating"
+              @click="store.togglePause()"
+              class="flex-1 py-2 rounded text-xs font-medium bg-slate-600 text-white hover:bg-slate-500 transition"
+            >
+              {{ store.isPaused ? '▶ 继续' : '⏸ 暂停' }}
+            </button>
+          </div>
+
+          <!-- Speed selector -->
+          <div v-if="store.isSimulating || store.simProgress > 0" class="space-y-1">
+            <div class="text-[10px] text-slate-400 mb-1">播放速度</div>
+            <div class="flex gap-1">
+              <button
+                v-for="speed in [1, 2, 4, 8] as const"
+                :key="speed"
+                @click="store.setSimSpeed(speed)"
+                :class="[
+                  'flex-1 py-1 rounded text-[10px] font-medium transition',
+                  store.simSpeed === speed
+                    ? 'bg-sky-600 text-white'
+                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                ]"
+              >
+                {{ speed }}x
+              </button>
+            </div>
+          </div>
 
           <!-- Progress bar -->
           <div v-if="store.isSimulating || store.simProgress > 0" class="space-y-1">
             <div class="flex justify-between text-[10px] text-slate-400">
               <span>模拟进度</span>
-              <span>{{ store.simProgress }}%</span>
+              <span>{{ store.simProgress.toFixed(0) }}%</span>
             </div>
-            <div class="w-full bg-slate-700 rounded-full h-2">
-              <div
-                class="h-2 rounded-full transition-all bg-amber-500"
-                :style="{ width: store.simProgress + '%' }"
-              />
-            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="0.1"
+              :value="store.simProgress"
+              @input="(e) => store.setSimProgress(parseFloat((e.target as HTMLInputElement).value))"
+              class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+            />
           </div>
 
           <button
