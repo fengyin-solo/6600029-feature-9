@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 import MapView from './components/MapView.vue';
 import TerrainProfile from './components/TerrainProfile.vue';
 import FlightStats from './components/FlightStats.vue';
@@ -7,8 +7,21 @@ import { useDroneStore } from './store/drone';
 
 const store = useDroneStore();
 
+function handleGlobalMouseUp() {
+  if (store.isDragging) {
+    store.endDrag();
+  }
+}
+
 onMounted(() => {
   store.loadMockData();
+  window.addEventListener('mouseup', handleGlobalMouseUp);
+  window.addEventListener('touchend', handleGlobalMouseUp);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('mouseup', handleGlobalMouseUp);
+  window.removeEventListener('touchend', handleGlobalMouseUp);
 });
 
 function handlePlanRoute() {
@@ -16,6 +29,11 @@ function handlePlanRoute() {
   const first = store.waypoints[0];
   const last = store.waypoints[store.waypoints.length - 1];
   store.planRoute([first.lat, first.lng], [last.lat, last.lng]);
+}
+
+function handleProgressMouseDown(e: MouseEvent | TouchEvent) {
+  e.preventDefault();
+  store.startDrag();
 }
 </script>
 
@@ -136,6 +154,8 @@ function handlePlanRoute() {
               max="100"
               step="0.1"
               :value="store.simProgress"
+              @mousedown="handleProgressMouseDown"
+              @touchstart="handleProgressMouseDown"
               @input="(e) => store.setSimProgress(parseFloat((e.target as HTMLInputElement).value))"
               class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
             />

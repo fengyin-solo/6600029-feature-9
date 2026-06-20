@@ -20,6 +20,8 @@ export const useDroneStore = defineStore('drone', () => {
   const selectedAlgorithm = ref<'astar' | 'rrt'>('astar');
   const isSimulating = ref(false);
   const isPaused = ref(false);
+  const isDragging = ref(false);
+  const wasPlayingBeforeDrag = ref(false);
   const simProgress = ref(0);
   const simSpeed = ref<1 | 2 | 4 | 8>(1);
   const mapCenter = ref<[number, number]>([39.9, 116.4]);
@@ -72,6 +74,8 @@ export const useDroneStore = defineStore('drone', () => {
     simProgress.value = 0;
     isSimulating.value = false;
     isPaused.value = false;
+    isDragging.value = false;
+    wasPlayingBeforeDrag.value = false;
     if (simInterval) {
       clearInterval(simInterval);
       simInterval = null;
@@ -152,11 +156,39 @@ export const useDroneStore = defineStore('drone', () => {
     if (simProgress.value >= 100) {
       isSimulating.value = false;
       isPaused.value = false;
+      isDragging.value = false;
+      wasPlayingBeforeDrag.value = false;
       if (simInterval) {
         clearInterval(simInterval);
         simInterval = null;
       }
     }
+  }
+
+  function startDrag() {
+    if (simProgress.value >= 100) return;
+    isDragging.value = true;
+    wasPlayingBeforeDrag.value = isSimulating.value && !isPaused.value;
+    if (wasPlayingBeforeDrag.value && simInterval) {
+      clearInterval(simInterval);
+      simInterval = null;
+    }
+    isPaused.value = true;
+  }
+
+  function endDrag() {
+    if (!isDragging.value) return;
+    isDragging.value = false;
+    if (simProgress.value >= 100) {
+      wasPlayingBeforeDrag.value = false;
+      return;
+    }
+    if (wasPlayingBeforeDrag.value) {
+      isPaused.value = false;
+      isSimulating.value = true;
+      startSimulation();
+    }
+    wasPlayingBeforeDrag.value = false;
   }
 
   function loadMockData() {
@@ -261,6 +293,7 @@ export const useDroneStore = defineStore('drone', () => {
     selectedAlgorithm,
     isSimulating,
     isPaused,
+    isDragging,
     simProgress,
     simSpeed,
     mapCenter,
@@ -279,6 +312,8 @@ export const useDroneStore = defineStore('drone', () => {
     togglePause,
     setSimSpeed,
     setSimProgress,
+    startDrag,
+    endDrag,
     loadMockData,
     exportPlan,
     updatePlan,
